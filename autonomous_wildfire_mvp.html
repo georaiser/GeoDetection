@@ -1,0 +1,226 @@
+<h1>Autonomous Wildfire Monitoring System -- MVP Design (English)</h1>
+
+<h2>1. Overview</h2>
+
+<p>This MVP defines an autonomous wildfire monitoring system using: -
+<strong>GOES-16/18</strong> for real-time detection (5--10 min) - <strong>VIIRS</strong> for
+confirmation and higher spatial resolution - <strong>PyTorch</strong> deep-learning
+for hotspot detection &amp; segmentation - <strong>LangGraph + CrewAI</strong>
+multi-agent workflows - <strong>MapLibre / Leaflet / Cesium</strong> for a web-based
+map viewer - <strong>FastAPI</strong> backend and <strong>PostgreSQL/PostGIS</strong> geospatial
+database</p>
+
+<p>The system is designed to be modular, reproducible, and scalable.</p>
+
+<hr />
+
+<h2>2. Architecture Overview</h2>
+
+<h3>Data Flow</h3>
+
+<ol>
+<li><strong>Ingestion Agent</strong>
+<ul>
+<li>Downloads GOES imagery every 5--10 min\</li>
+<li>Downloads VIIRS imagery when available\</li>
+<li>Saves raw files to <code>data/raw/</code></li>
+</ul></li>
+<li><strong>Preprocessing &amp; Feature Extraction Agent</strong>
+<ul>
+<li>Converts radiance → brightness temperature\</li>
+<li>Performs cloud masking\</li>
+<li>Generates patches for ML inference</li>
+</ul></li>
+<li><strong>PyTorch Inference Agent</strong>
+<ul>
+<li>Runs CNN/Transformer wildfire detector\</li>
+<li>Outputs polygons + confidence scores</li>
+</ul></li>
+<li><strong>Fusion &amp; Decision Agent (LangGraph)</strong>
+<ul>
+<li>Merges GOES + VIIRS detections\</li>
+<li>Prioritizes high-risk events\</li>
+<li>Sends alerts</li>
+</ul></li>
+<li><strong>Alerting Agent</strong>
+<ul>
+<li>Telegram API / Email / SMS\</li>
+<li>Internal API POST to emergency systems</li>
+</ul></li>
+<li><strong>Map Publishing Agent</strong>
+<ul>
+<li>Inserts detections into PostGIS\</li>
+<li>Exposes via FastAPI → Web Map Viewer</li>
+</ul></li>
+</ol>
+
+<hr />
+
+<h2>3. Detailed Agent System (MVP)</h2>
+
+<h3>3.1 Ingestion Agent</h3>
+
+<p><strong>Responsibilities</strong> - Fetch GOES ABI Band 7, 14 (Fire/Hotspot) - Fetch
+VIIRS I-Band (375 m) - Organize into datetime folders</p>
+
+<p><strong>Inputs</strong> - Satellite data URLs\
+- Cron schedule</p>
+
+<p><strong>Outputs</strong> - GeoTIFF or NetCDF files</p>
+
+<h3>3.2 Preprocessing Agent</h3>
+
+<p><strong>Responsibilities</strong> - Convert radiance → temperature\
+- Resampling\
+- Cloud mask\
+- Patch extraction</p>
+
+<p><strong>Outputs</strong> - Standardized tensors (.pt)</p>
+
+<h3>3.3 PyTorch Inference Agent</h3>
+
+<p><strong>Model options</strong> - ResNet50 wildfire classifier\
+- ViT or Swin Transformer for hotspot segmentation\
+- YOLOv8-fire (custom training)\
+- UNet for fire mask prediction</p>
+
+<p><strong>Outputs</strong> - Fire polygons\
+- Heatmaps\
+- Confidence scores</p>
+
+<h3>3.4 Fusion &amp; Decision Agent (LangGraph)</h3>
+
+<p><strong>Responsibilities</strong> - Combine GOES (fast) + VIIRS (precise)\
+- Discard false positives\
+- Generate severity score\
+- Trigger alerts</p>
+
+<h3>3.5 Alerting Agent</h3>
+
+<p><strong>Outputs</strong> - Alert message\
+- Location + bounding box\
+- Fire growth indicators</p>
+
+<hr />
+
+<h2>4. MVP Folder Structure</h2>
+
+<pre><code>autonomous-wildfire-monitoring/
+│
+├── agents/
+│   ├── ingestion_agent.py
+│   ├── preprocess_agent.py
+│   ├── inference_agent.py
+│   ├── fusion_agent.py
+│   ├── alert_agent.py
+│   └── map_publish_agent.py
+│
+├── models/
+│   ├── pytorch_model.pt
+│   ├── config.yaml
+│   └── training_notebooks/
+│
+├── workflows/
+│   ├── wildfire_detection_graph.py
+│   └── crewai_tasks.yaml
+│
+├── api/
+│   ├── main.py
+│   ├── routers/
+│   ├── schemas/
+│   └── services/
+│
+├── web/
+│   ├── viewer/
+│   │   ├── index.html
+│   │   ├── map.js
+│   │   └── layers/
+│
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   └── detections/
+│
+├── configs/
+│   ├── agents.yaml
+│   ├── api.yaml
+│   └── model.yaml
+│
+└── README.md
+</code></pre>
+
+<hr />
+
+<h2>5. MVP Milestones</h2>
+
+<h3>Phase 1 --- Core Pipeline</h3>
+
+<ul>
+<li>GOES ingestion (5--10 min loop)</li>
+<li>Preprocessing pipeline</li>
+<li>Basic PyTorch classifier (e.g., ResNet50)</li>
+<li>Insert detections into PostGIS</li>
+</ul>
+
+<h3>Phase 2 --- Agents &amp; Automation</h3>
+
+<ul>
+<li>LangGraph pipeline\</li>
+<li>Alert Agent\</li>
+<li>Simple web viewer</li>
+</ul>
+
+<h3>Phase 3 --- Accuracy Upgrade</h3>
+
+<ul>
+<li>VIIRS fusion\</li>
+<li>Transformer-based segmentation\</li>
+<li>Fire growth prediction</li>
+</ul>
+
+<hr />
+
+<h2>6. API Endpoints (FastAPI)</h2>
+
+<pre><code>GET /detections/latest
+GET /detections/{id}
+GET /tiles/{z}/{x}/{y}.pbf
+POST /alerts/send
+</code></pre>
+
+<hr />
+
+<h2>7. Data Schemas (PostGIS)</h2>
+
+<h3>Table: fire_events</h3>
+
+<pre><code>id SERIAL PRIMARY KEY
+timestamp TIMESTAMPTZ
+confidence FLOAT
+source TEXT
+geometry GEOMETRY(POLYGON, 4326)
+</code></pre>
+
+<h3>Table: alerts</h3>
+
+<pre><code>event_id INT REFERENCES fire_events(id)
+sent_to TEXT
+sent_at TIMESTAMPTZ
+</code></pre>
+
+<hr />
+
+<h2>8. Future Extensions</h2>
+
+<ul>
+<li>Drone integration\</li>
+<li>Weather + wind prediction model\</li>
+<li>LLM-based report generation\</li>
+<li>Multi-hazard expansion (volcanoes, flooding, smoke transport)</li>
+</ul>
+
+<hr />
+
+<h2>9. License</h2>
+
+<p>MIT (recommended)</p>

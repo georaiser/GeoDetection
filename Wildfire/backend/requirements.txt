@@ -5,3 +5,7 @@ geoalchemy2
 psycopg2-binary
 pydantic
 pydantic-settings
+crewai
+langgraph
+torch
+torchvision

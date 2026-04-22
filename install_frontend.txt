@@ -1,0 +1,9 @@
+npm create vite@latest frontend -- --template react-ts
+cd frontend
+npm install
+
+# Dependencies
+npm install maplibre-gl react-map-gl
+
+npm install tailwindcss@3 postcss autoprefixer
+npx tailwindcss init -p
